@@ -1,33 +1,102 @@
 name: Prepare public ViniTV catalog
+
 on:
+  pull_request:
+    paths:
+      - .github/workflows/catalog.yml
+      - catalog-config.json
+      - scripts/**
   workflow_dispatch:
   schedule:
-    - cron: '17 5 * * *'
+    - cron: "17 5 * * *"
+
 permissions:
-  contents: write
+  contents: read
+
 concurrency:
-  group: public-catalog
+  group: public-vinitv-catalog-${{ github.ref }}
   cancel-in-progress: false
+
 jobs:
-  prepare:
+  validate-branch:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    permissions:
+      contents: read
     steps:
-      - uses: actions/checkout@v4
+      - name: Check out the reviewed ref
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
+          python-version: "3.12"
+
+      - name: Run synthetic pipeline tests
+        run: python -B -m unittest discover -s scripts -p "test_*.py"
+
+  generate-review:
+    if: github.ref != 'refs/heads/main'
+    needs: validate-branch
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    steps:
+      - name: Check out the reviewed ref
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Prepare metadata-only catalog for review
+        run: python -B scripts/prepare_catalog.py --config catalog-config.json --output catalog
+
+      - name: Validate review catalog without publishing
+        run: python -B scripts/validate_public_catalog.py
+
+  publish-main:
+    if: github.ref == 'refs/heads/main'
+    needs: validate-branch
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: write
+    steps:
+      - name: Check out main for publication
+        uses: actions/checkout@v4
+        with:
+          ref: main
           persist-credentials: false
-      - uses: actions/setup-python@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
-      - run: python -m unittest discover -s scripts -p 'test_prepare_catalog.py'
-      - run: python scripts/prepare_catalog.py
-      - name: Publish only changed generated catalog
+          python-version: "3.12"
+
+      - name: Prepare metadata-only catalog
+        run: python -B scripts/prepare_catalog.py --config catalog-config.json --output catalog
+
+      - name: Validate catalog and public artifacts
+        run: python -B scripts/validate_public_catalog.py
+
+      - name: Publish generated catalog when changed
+        if: github.ref == 'refs/heads/main'
         env:
-          GH_TOKEN: ${{ github.token }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GIT_TERMINAL_PROMPT: "0"
+        shell: bash
         run: |
-          if [ -z "$(git status --porcelain -- catalog)" ]; then exit 0; fi
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -- catalog
-          git commit -m 'Update prepared public catalog'
-          git -c http.extraheader="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)" push origin HEAD
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "chore: refresh public ViniTV catalog"
+          auth="$(printf 'x-access-token:%s' "$GITHUB_TOKEN" | base64 -w0)"
+          git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic ${auth}" push origin HEAD:refs/heads/main
+          unset auth

@@ -1,7 +1,31 @@
 {
   "upstream": "Ramys/Iptv-Brasil-2026",
   "branch": "master",
-  "inputs": [],
-  "publicStreamUrls": [],
-  "minimumAppVersion": 13
+  "destination": {
+    "repository": "microwan-fordun-as/atlas-index",
+    "branch": "main"
+  },
+  "inputs": [
+    {
+      "path": "CanaisBR01.m3u8",
+      "section": "auto"
+    },
+    {
+      "path": "CanaisBR02.m3u8",
+      "section": "auto"
+    },
+    {
+      "path": "CanaisBR03.m3u8",
+      "section": "auto"
+    },
+    {
+      "path": "CanaisBR04.m3u8",
+      "section": "auto"
+    },
+    {
+      "path": "Filmes-Series.m3u8",
+      "section": "auto"
+    }
+  ],
+  "minimumAppVersion": 16
 }
