@@ -1,0 +1,14 @@
+[
+  {
+    "url": "https://synthetic-user:synthetic-password@media.example/movie%2fA.mp4?token=synthetic%2Bsecret&x=1&x=2",
+    "streamKey": "6c4346db73e7bc97a5887fc02639981a22732f8d2b2eeb3df6319ce49d659869"
+  },
+  {
+    "url": "http://media.example/FilmeÁ.mp4?username=synthetic-user&password=synthetic-password",
+    "streamKey": "39e3784893dc88150bf3bb3e9876a3581b83815d5c5e4e199245ac96a12528dc"
+  },
+  {
+    "url": "https://media.example/film.mp4?token=a+b%2B&order=2&order=1#fragment",
+    "streamKey": "a3311f37e2c9521457727514ec12d49d043d6e35b90f85b4773aa689a60596e1"
+  }
+]
